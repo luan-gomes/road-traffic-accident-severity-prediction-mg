@@ -6,6 +6,7 @@ from src.constants import (
     DATA_GROUPS,
     YEARS,
     VEHICLES_CATEGORIES,
+    ORIGINAL_COLUMNS_NAMES_PER_DATA_GROUP,
 )
 
 def read_csv(path: Path, columns: list[str] | None = None) -> pd.DataFrame:
@@ -15,6 +16,18 @@ def read_csv(path: Path, columns: list[str] | None = None) -> pd.DataFrame:
     
     header = 0 if columns != None else 'infer'
     return pd.read_csv(path, sep=';', header=header, names=columns)
+
+
+def validate_original_columns(path: Path, data_group: str):
+    """Valida se o cabeçalho original do CSV possui as mesmas colunas, na mesma ordem, do mapeamento do data group."""
+    expected_columns = ORIGINAL_COLUMNS_NAMES_PER_DATA_GROUP[data_group].split(';')
+    file_columns = list(pd.read_csv(path, sep=';', nrows=0).columns)
+    if file_columns != expected_columns:
+        raise ValueError(
+            f"Cabeçalho inesperado no arquivo '{path}'.\n"
+            f"   -> Esperado: {expected_columns}\n"
+            f"   -> Encontrado: {file_columns}"
+        )
 
 def load_data_group_df_from_data_dir(data_group: str, data_dir: Path, years: tuple[int] = YEARS) -> pd.DataFrame:
     """Carrega todos os arquivos CSV de um data group a partir do diretório de dados do projecto e retorna um único DataFrame."""
@@ -29,6 +42,7 @@ def load_data_group_df_from_data_dir(data_group: str, data_dir: Path, years: tup
     columns = COLUMNS_PER_DATA_GROUP[data_group]
     for year in years:
         year_file_path = data_group_dir / f"{year}.csv"
+        validate_original_columns(year_file_path, data_group)
         frames.append(read_csv(year_file_path, columns))
 
     return pd.concat(frames, ignore_index=True)
@@ -87,7 +101,14 @@ def aggregate_vitimas_dataset(df_victims: pd.DataFrame) -> pd.DataFrame:
     
     condicoes_graves = ['GRAVES OU INCONSCIENTE', 'FATAL']
     df['is_grave'] = df['vit_condicao_fisica_descricao'].isin(condicoes_graves)
-    
+
+    # Condição física desconhecida: não permite afirmar que a vítima NÃO era grave
+    condicoes_ignoradas = ['GRAU DA LESAO - IGNORADO']
+    df['is_condicao_ignorada'] = (
+        df['vit_condicao_fisica_descricao'].isin(condicoes_ignoradas) |
+        df['vit_condicao_fisica_descricao'].isna()
+    )
+
     df['is_pedestre'] = df['vit_tipo_envolvimento'] == 'VITIMA E PEDESTRE (TRANSITO)'
     
     # Tratamento de segurança para a coluna de idade (força conversão para número, erros viram NaN)
@@ -97,13 +118,15 @@ def aggregate_vitimas_dataset(df_victims: pd.DataFrame) -> pd.DataFrame:
         qtd_vitimas=('numero_ocorrencia_associado', 'size'),
         has_pedestre_envolvido=('is_pedestre', 'max'),
         acidente_grave=('is_grave', 'max'),
+        has_condicao_fisica_ignorada=('is_condicao_ignorada', 'max'),
         idade_media_vitimas=('vit_valor_idade_aparente', 'mean'),
         idade_maxima_vitima=('vit_valor_idade_aparente', 'max')
     ).reset_index()
-    
+
     # Converter booleanos (True/False) do 'max' para inteiros (1/0)
     df_grouped['has_pedestre_envolvido'] = df_grouped['has_pedestre_envolvido'].astype(int)
     df_grouped['acidente_grave'] = df_grouped['acidente_grave'].astype(int)
+    df_grouped['has_condicao_fisica_ignorada'] = df_grouped['has_condicao_fisica_ignorada'].astype(int)
 
     # Converter idade_maxima_vitima para Int64
     df_grouped['idade_maxima_vitima'] = df_grouped['idade_maxima_vitima'].astype('Int64')
@@ -212,7 +235,9 @@ def process_ocorrencias_base_dataset(df_ocorrencias: pd.DataFrame) -> pd.DataFra
     cols_existentes = [c for c in cols_finais if c in df.columns]
     df_processed = df[cols_existentes].copy()
     
-    df_processed = df_processed.drop_duplicates(subset=['numero_ocorrencia_associado'])
+    # O mesmo número de ocorrência aparece em arquivos de anos diferentes, com datas diferentes (acidentes distintos).
+    # Como não é possível saber a qual registro pertencem vítimas, veículos e condições, todos os registros desses números são removidos.
+    df_processed = df_processed[~df_processed.duplicated(subset=['numero_ocorrencia_associado'], keep=False)]
     
     return df_processed
 
@@ -321,14 +346,21 @@ def build_analytical_base_table(
             f"mas a tabela base possui {total_base_rows}. Houve duplicação de chaves durante o merge!"
         )
     print("   -> Validação concluída: Nenhuma duplicata gerada no merge.\n")
-    
+
+    # Flags de cobertura: indicam se a ocorrência possui registro em cada tabela secundária.
+    # Precisam ser criadas ANTES do preenchimento com 0, que não distingue "sem registro" de "valor 0".
+    df_abt['has_registro_condicoes'] = df_abt['numero_ocorrencia_associado'].isin(df_cond_agg['numero_ocorrencia_associado']).astype(int)
+    df_abt['has_registro_via'] = df_abt['numero_ocorrencia_associado'].isin(df_via_agg['numero_ocorrencia_associado']).astype(int)
+    df_abt['has_registro_veiculo'] = df_abt['numero_ocorrencia_associado'].isin(df_veiculos_agg['numero_ocorrencia_associado']).astype(int)
+
     # 4. Tratamento de Valores Nulos (NaN) Pós-Merge
-    print("4/4. Tratando valores nulos decorrentes do LEFT JOIN...")
     
-    # 4.1. Flags binárias e contagens: Se não houve match no LEFT JOIN, o valor real é 0
-    # Exemplo: Se o acidente não aparece na tabela de vítimas, significa 0 vítimas e 0 graves.
+    # 4.1. Flags binárias e contagens: se não houve match no LEFT JOIN, preenche com 0.
+    # - Vítimas: ausência de registro significa de fato 0 vítimas e 0 graves.
+    # - Condições, via e veículos: ausência significa "não informado", e não "0". Essa diferença
+    #   fica registrada nas colunas has_registro_condicoes, has_registro_via e has_registro_veiculo.
     cols_zero_fill = [
-        'qtd_vitimas', 'has_pedestre_envolvido', 'acidente_grave',
+        'qtd_vitimas', 'has_pedestre_envolvido', 'acidente_grave', 'has_condicao_fisica_ignorada',
         'is_noite_sem_iluminacao', 'is_periodo_noturno', 'has_sinalizacao_deficiente',
         'is_pista_simples', 'is_pista_nao_pavimentada',
         'has_via_boa', 'has_via_buracos', 'has_material_na_pista',
@@ -349,13 +381,16 @@ def apply_filters(original_df: pd.DataFrame,  years: tuple[int] = YEARS) -> pd.D
     """
     Filtra a base para manter apenas:
     - Ocorrências nos anos especificados;
-    - Ocorrências com PELO MENOS 1 VÍTIMA.
+    - Ocorrências com PELO MENOS 1 VÍTIMA;
+    - Ocorrências com rótulo confiável: remove as não graves que possuem vítima com condição física ignorada.
     """
     filter_condition = (
         (original_df['oco_ano_fato'].isin(years)) &
-        (original_df['qtd_vitimas'] > 0)
+        (original_df['qtd_vitimas'] > 0) &
+        ~((original_df['acidente_grave'] == 0) & (original_df['has_condicao_fisica_ignorada'] == 1))
     )
-    return original_df[filter_condition].copy()
+    # A flag só serve para o filtro: depois dele, todo caso com flag 1 é grave (seria vazamento do target)
+    return original_df[filter_condition].drop(columns=['has_condicao_fisica_ignorada']).copy()
 
 def check_missing_values(df: pd.DataFrame, show_only_missing: bool = True) -> pd.DataFrame:
     """Analisa e exibe a quantidade e o percentual de valores faltantes por coluna."""
@@ -377,13 +412,23 @@ def check_missing_values(df: pd.DataFrame, show_only_missing: bool = True) -> pd
     
     return summary_df
 
-def clean_missing_values(df: pd.DataFrame) -> pd.DataFrame:
-    """Limpeza de valores faltantes com base nos resultados da função check_missing_values"""
+def clean_missing_values(df: pd.DataFrame, drop_missing_coordinates: bool = False, impute: bool = True) -> pd.DataFrame:
+    """
+    Limpeza de valores faltantes com base nos resultados da função check_missing_values.
+    - drop_missing_coordinates: remove linhas sem coordenadas. Usar True apenas se as coordenadas
+      forem features do modelo (a ausência varia por ano e tem taxa de gravidade maior).
+    - impute: imputa moda/mediana calculadas na base inteira. Usar True apenas na EDA; na modelagem,
+      usar False e imputar dentro do Pipeline, com valores calculados somente no treino.
+    """
     df_clean = df.copy()
-    
-    # 1. Remover linhas sem coordenadas geográficas (caso vá usar em mapa ou modelo)
-    df_clean = df_clean.dropna(subset=['oco_latitude_sirgas2000', 'oco_longitude_sirgas2000'])
-    
+
+    # 1. Remover linhas sem coordenadas geográficas (somente se for usá-las no modelo; os mapas já descartam esses casos)
+    if drop_missing_coordinates:
+        df_clean = df_clean.dropna(subset=['oco_latitude_sirgas2000', 'oco_longitude_sirgas2000'])
+
+    if not impute:
+        return df_clean
+
     # 2. Imputar a quantidade de veículos com a moda (se houver nulos)
     if 'qtd_veiculos_envolvidos' in df_clean.columns and df_clean['qtd_veiculos_envolvidos'].isnull().any():
         mode_val = df_clean['qtd_veiculos_envolvidos'].mode()[0]
@@ -397,3 +442,32 @@ def clean_missing_values(df: pd.DataFrame) -> pd.DataFrame:
             df_clean[col] = df_clean[col].fillna(median_val)
             
     return df_clean
+
+
+def display_category_values_per_year(df: pd.DataFrame, column: str, year_column: str):
+    """Exibe o percentual de cada categoria de uma coluna por ano, para verificar se a codificação se mantém no período."""
+    table = pd.crosstab(df[column].fillna('<NULO>'), df[year_column], normalize='columns') * 100
+    print(f"Coluna: {column} (percentual por ano)")
+    display(table.round(2))
+
+
+def identify_occurrences_in_multiple_years(df_per_data_group: dict[str, pd.DataFrame], occurrence_col: str):
+    """Verifica e exibe quais DataFrames possuem a mesma ocorrência registrada em mais de um ano."""
+    for data_group in DATA_GROUPS:
+        if data_group not in df_per_data_group.keys():
+            raise KeyError(f"Data group '{data_group}' não encontrado em df_per_data_group keys.")
+
+        df = df_per_data_group[data_group]
+        year_col = f"{data_group[:3]}_ano_fato"
+        if occurrence_col not in df.columns or year_col not in df.columns:
+            print(f"[{data_group}]: Ignorado. As colunas '{occurrence_col}' e '{year_col}' precisam existir neste dataset.\n")
+            continue
+
+        years_per_occurrence = df.groupby(occurrence_col)[year_col].nunique()
+        occurrences_multiple_years = years_per_occurrence[years_per_occurrence > 1]
+        if len(occurrences_multiple_years) > 0:
+            print(f"[{data_group}]: POSSUI ocorrências registradas em mais de um ano.")
+            print(f"   -> Ocorrências únicas: {len(years_per_occurrence)}")
+            print(f"   -> Ocorrências em mais de um ano: {len(occurrences_multiple_years)}\n")
+        else:
+            print(f"[{data_group}]: Nenhuma ocorrência registrada em mais de um ano.\n")

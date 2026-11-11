@@ -96,3 +96,35 @@ def plot_mapa_calor_hexagonal(df):
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
     plt.show()
+
+def plot_taxa_gravidade_hexagonal(df, target='acidente_grave', min_acidentes=30):
+    """Mapa hexagonal da TAXA de acidentes graves por célula (média do target), em vez da contagem absoluta."""
+    df_geo = df.dropna(subset=['oco_latitude_sirgas2000', 'oco_longitude_sirgas2000']).copy()
+
+    df_geo['lat'] = pd.to_numeric(
+        df_geo['oco_latitude_sirgas2000'].astype(str).str.replace(',', '.'),
+        errors='coerce'
+    )
+    df_geo['lon'] = pd.to_numeric(
+        df_geo['oco_longitude_sirgas2000'].astype(str).str.replace(',', '.'),
+        errors='coerce'
+    )
+
+    # Remove linhas onde a conversão falhou
+    df_geo = df_geo.dropna(subset=['lat', 'lon'])
+
+    plt.figure(figsize=(10, 8))
+    plt.hexbin(
+        x=df_geo['lon'],
+        y=df_geo['lat'],
+        C=df_geo[target],
+        reduce_C_function=np.mean,
+        gridsize=100,
+        cmap='inferno',
+        mincnt=min_acidentes
+    )
+    plt.colorbar(label='Proporção de Acidentes Graves')
+    plt.title(f'Taxa de Acidentes Graves por Região (células com ao menos {min_acidentes} acidentes)')
+    plt.xlabel('Longitude')
+    plt.ylabel('Latitude')
+    plt.show()
