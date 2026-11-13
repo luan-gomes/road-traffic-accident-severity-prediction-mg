@@ -106,3 +106,47 @@ VEHICLES_CATEGORIES = {
 STREET_ADDRESS_ROAD_TYPE_VALUES =  {"RODOVIA"}
 
 ROAD_ACCIDENT_WITH_VICTIM_OCURRENCY_DESCRIPTION = "ACIDENTE DE TRANSITO COM VITIMA"
+
+TARGET_COLUMN = 'acidente_grave'
+OCCURRENCE_ID_COLUMN = 'numero_ocorrencia_associado'
+
+TEST_YEAR = 2025
+TRAIN_YEARS_5 = (2021, 2022, 2023, 2024)
+TRAIN_YEARS_10 = (2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024)
+
+RANDOM_STATE = 42
+
+CANDIDATE_FEATURES = (
+    'is_municipio_bh',
+    'is_rmbh',
+    'is_fim_de_semana',
+    'hora_fato',
+    'is_madrugada',
+    'is_horario_pico',
+    'is_periodo_chuvoso_mg',
+    'is_via_rapida',
+    'qtd_vitimas',
+    'has_pedestre_envolvido',
+    'idade_media_vitimas',
+    'idade_maxima_vitima',
+    'is_noite_sem_iluminacao',
+    'is_periodo_noturno',
+    'has_sinalizacao_deficiente',
+    'is_pista_simples',
+    'is_pista_nao_pavimentada',
+    'has_via_boa',
+    'has_via_buracos',
+    'has_material_na_pista',
+    'has_via_ondulada',
+    'has_via_rachadura',
+    'has_via_sulcos_horizontais',
+    'qtd_defeitos_via',
+    'has_defeito_via',
+    'qtd_veiculos_envolvidos',
+    'has_motocicleta_envolvida',
+    'has_bicicleta_envolvida',
+    'has_veiculo_pesado_envolvido',
+    'has_registro_condicoes',
+    'has_registro_via',
+    'has_registro_veiculo'
+)
