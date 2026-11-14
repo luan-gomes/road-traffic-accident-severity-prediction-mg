@@ -7,7 +7,7 @@ Este repositório é utilizado na disciplina de Trabalho de Conclusão de Curso,
 
 ## Sobre o projeto
 
-O objetido do projeto éredizer a gravidade de acidentes de trânsito com vítimas em Minas Gerais utilizando dados dos últimos 10 anos completos, de 2016 a 2025, provenientes da Base de Dados do Painel de Sinistro de Trânsito da Secretaria de Estado de Justiça e Segurança Pública de Minas Gerais, para que o socorro médico possa ser direcionado/priorizado com mais eficiência na resposta da emergência. 
+Comparar o desempenho de diferentes modelos de aprendizado de máquina na predição da gravidade de acidentes de trânsito com vítimas ocorridos em Minas Gerais, utilizando dados provenientes da Base de Dados do Painel de Sinistro de Trânsito da Secretaria de Estado de Justiça e Segurança Pública de Minas Gerais, com o propósito de apoiar a priorização do atendimento de emergência às ocorrências. 
 
 ## Sobre os dados
 
