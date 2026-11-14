@@ -16,11 +16,13 @@ Comparar o desempenho de diferentes modelos de aprendizado de máquina na predi�
 **Data de acesso e coleta de dados:** 06 de Setembro de 2026
 
 **Procedimento de obtenção dos dados:**
-A base de dados original está armazenada em uma pasta compartilhada do Google Drive e possui 5 subpastas: Vítimas, Via, Veículo, Ocorrências e Condições. Cada subpasta possui um arquivo .csv para cada ano contendo dados de Janeiro a Dezembro do respectivo ano, com exceção, na data da execução desta análise (06 de Setembro de 2026), para o ano atual que possui dois arquivos, um abrangendo o perídio de Janeiro a Junho e outro de Janeiro a Julho. 
+A base de dados original está armazenada em uma pasta compartilhada do Google Drive e possui 5 subpastas (também referenciadas como data groups ao longo deste trabalho): Vítimas, Via, Veículo, Ocorrências e Condições. Cada subpasta possui um arquivo `.csv` para cada ano contendo dados de Janeiro a Dezembro do respectivo ano, com exceção, na data da execução desta análise (06 de Setembro de 2026), para o ano atual que possui dois arquivos, um abrangendo o perídio de Janeiro a Junho e outro de Janeiro a Julho. 
 
-- Acessar o link supracitado.
-- Acessas cada uma das subpastas e baixar o arquivo `.csv` dos anos 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025.
-- Após o download, os arquivos `.csv` foram renomeados para seguir o padrão `<ANO-NUMÉRICO>.csv`.
+- Criar um diretório `data` na raiz deste repositório e, dentro desse novo diretório, criar as seguintes subpastas: `condicoes`, `ocorrencias`, `veiculo`, `via`, `vitimas`.
+- Acessar o link da fonte de dados.
+- Acessar cada uma das subpastas e baixar o arquivo `.csv` dos anos 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025.
+- Após o download, mover os arquivos de cada data group para a sua respectiva subpasta dentro de `data`.
+- Renomear os arquivos `.csv` para o seguinte padrão `<ANO-NUMÉRICO>.csv`, por exemplo, o arquivo `Vítimas de Acidente de Trânsito - MG - Jan a Jun 2026.csv` deve ser renomeado para `2026.csv`.
 
 ## Executar as análises
 
@@ -47,7 +49,7 @@ road-traffic-accident-severity-prediction-mg/
 ├── notebooks/
 │   ├── eda.ipynb               # Análise exploratória considerando 5 anos (2021 - 2025)
 │   ├── eda_10_years.ipynb      # Análise exploratória considerando 10 anos (2016 - 2025)
-│   └── modeling.ipynb          # seleção de atributos, o treinamento dos modelos e a comparação entre os recortes temporais de 5 e de 10 anos
+│   └── modeling.ipynb          # Seeleção de atributos, o treinamento dos modelos e a comparação entre os recortes temporais de 5 e de 10 anos
 ├── src/
 │   ├── modeling.py             # Funções de modelagem
 │   ├── preprocessing.py        # Funções da análise exploratória
