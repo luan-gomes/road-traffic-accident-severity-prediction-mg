@@ -9,6 +9,8 @@ from src.constants import (
     ORIGINAL_COLUMNS_NAMES_PER_DATA_GROUP,
 )
 
+from src.raining import add_is_chovendo
+
 def read_csv(path: Path, columns: list[str] | None = None) -> pd.DataFrame:
     """Retorna um DataFrame a partir de um path."""
     if not path.exists() or not path.is_file():
@@ -177,7 +179,8 @@ def aggregate_condicoes_via_dataset(df_condicoes: pd.DataFrame) -> pd.DataFrame:
     
     return df_grouped
 
-def process_ocorrencias_base_dataset(df_ocorrencias: pd.DataFrame) -> pd.DataFrame:
+def process_ocorrencias_base_dataset(df_ocorrencias: pd.DataFrame, df_estacoes: pd.DataFrame,
+                                     df_precipitacao: pd.DataFrame) -> pd.DataFrame:
     """
     Processa e filtra o dataset base de ocorrências com base nos valores exatos
     do REDS-MG para Belo Horizonte ou Região Metropolitana (RMBH).
@@ -198,9 +201,6 @@ def process_ocorrencias_base_dataset(df_ocorrencias: pd.DataFrame) -> pd.DataFra
     df['is_madrugada'] = df['hora_fato'].between(0, 5, inclusive='both').fillna(False).astype(int)
     df['is_horario_pico'] = df['hora_fato'].isin([7, 8, 9, 17, 18, 19]).fillna(False).astype(int)
     
-    # Periodo chuvoso em MG (Novembro a Março)
-    df['is_periodo_chuvoso_mg'] = df['oco_mes_numerico_fato'].isin([11, 12, 1, 2, 3]).astype(int)
-    
     # Classificação de vias de maior velocidade
     vias_rapidas = ['AVENIDA', 'RODOVIA', 'ESTRADA', 'VIA', 'VIADUTO']
     df['is_via_rapida'] = (
@@ -213,6 +213,10 @@ def process_ocorrencias_base_dataset(df_ocorrencias: pd.DataFrame) -> pd.DataFra
     # Flag indicando se é Região Metropolitana de BH
     df['is_rmbh'] = (df['oco_rmbh_clean'] == 'SIM').astype(int)
 
+    # Chuva na hora do acidente (baseado em dados doINMET) + flag de cobertura, que diferencia "sem informação de chuva" de "sem chuva"
+    df = add_is_chovendo(df, df_estacoes, df_precipitacao)
+    df['has_registro_chuva'] = df['is_chovendo'].notna().astype(int)
+
     cols_finais = [
         'numero_ocorrencia_associado',
         'is_municipio_bh',
@@ -221,7 +225,8 @@ def process_ocorrencias_base_dataset(df_ocorrencias: pd.DataFrame) -> pd.DataFra
         'hora_fato',
         'is_madrugada',
         'is_horario_pico',
-        'is_periodo_chuvoso_mg',
+        'is_chovendo',
+        'has_registro_chuva',
         'is_via_rapida',
         'oco_ano_fato',
         'oco_tipo_logradouro_descricao',
@@ -313,6 +318,8 @@ def build_analytical_base_table(
     df_condicoes: pd.DataFrame,
     df_via: pd.DataFrame,
     df_veiculos: pd.DataFrame,
+    df_estacoes: pd.DataFrame,
+    df_precipitacao: pd.DataFrame,
 ) -> pd.DataFrame:
     """
     Orquestra o processamento e merge de todos os datasets de acidentes de trânsito,
@@ -320,7 +327,7 @@ def build_analytical_base_table(
     """    
     # 1. Processar a Tabela Base (Ocorrências)
     print("1/4. Processando tabela base de ocorrências...")
-    df_base = process_ocorrencias_base_dataset(df_ocorrencias)
+    df_base = process_ocorrencias_base_dataset(df_ocorrencias, df_estacoes, df_precipitacao)
     total_base_rows = len(df_base)
     print(f"   -> Tabela base pronta com {total_base_rows} ocorrências únicas.\n")
     
