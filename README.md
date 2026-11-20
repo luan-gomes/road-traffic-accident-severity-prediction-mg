@@ -15,7 +15,7 @@ Comparar o desempenho de diferentes modelos de aprendizado de máquina na predi�
 **Link:** [https://drive.google.com/drive/folders/1W_4SsAW8u5bvsaBoHhwInpUr72vES8yw?usp=sharing](https://drive.google.com/drive/folders/1W_4SsAW8u5bvsaBoHhwInpUr72vES8yw?usp=sharing)  
 **Data de acesso e coleta de dados:** 06 de Setembro de 2026
 
-**Procedimento de obtenção dos dados:**
+**Procedimento de obtenção dos dados dos acidentes:**
 A base de dados original está armazenada em uma pasta compartilhada do Google Drive e possui 5 subpastas (também referenciadas como data groups ao longo deste trabalho): Vítimas, Via, Veículo, Ocorrências e Condições. Cada subpasta possui um arquivo `.csv` para cada ano contendo dados de Janeiro a Dezembro do respectivo ano, com exceção, na data da execução desta análise (06 de Setembro de 2026), para o ano atual que possui dois arquivos, um abrangendo o perídio de Janeiro a Junho e outro de Janeiro a Julho. 
 
 - Criar um diretório `data` na raiz deste repositório e, dentro desse novo diretório, criar as seguintes subpastas: `condicoes`, `ocorrencias`, `veiculo`, `via`, `vitimas`.
@@ -23,6 +23,11 @@ A base de dados original está armazenada em uma pasta compartilhada do Google D
 - Acessar cada uma das subpastas e baixar o arquivo `.csv` dos anos 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025.
 - Após o download, mover os arquivos de cada data group para a sua respectiva subpasta dentro de `data`.
 - Renomear os arquivos `.csv` para o seguinte padrão `<ANO-NUMÉRICO>.csv`, por exemplo, o arquivo `Vítimas de Acidente de Trânsito - MG - Jan a Jun 2026.csv` deve ser renomeado para `2026.csv`.
+
+**Procedimento de obtenção dos dados do INMET:**
+- Fonte de dados: Banco de Dados Meteorológicos do INMET (BDMEP), disponível em https://bdmep.inmet.gov.br/
+- Foram solicitados os registros horários de 01 de Janeiro de 2016 a 31 de Dezembro de 2025 de todas as estações automáticas de MG.
+- Os dados foram recebidos por e-mail e adicionados no diretório `data/inmet`.
 
 ## Executar as análises
 
@@ -42,6 +47,7 @@ Acessar os notebooks no diretório `./notebooks` e executar as células em ordem
 road-traffic-accident-severity-prediction-mg/
 ├── data/
 │   ├── condicoes/                     # Dados obtidos conforme seção "Sobre os dados" referentes ao data group "Condições"
+│   ├── inmet/                         # Dados proveniente do INMET(BDMEP) para criação do atributo `is_chovendo`
 │   ├── ocorrencias/                   # Dados obtidos conforme seção "Sobre os dados" referentes ao data group "Ocorrências"
 │   ├── veiculo/                       # Dados obtidos conforme seção "Sobre os dados" referentes ao data group "Veículo"
 │   ├── via/                           # Dados obtidos conforme seção "Sobre os dados" referentes ao data group "Via"

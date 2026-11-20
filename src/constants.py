@@ -122,7 +122,7 @@ CANDIDATE_FEATURES = (
     'hora_fato',
     'is_madrugada',
     'is_horario_pico',
-    'is_periodo_chuvoso_mg',
+    'is_chovendo',
     'is_via_rapida',
     'qtd_vitimas',
     'has_pedestre_envolvido',
@@ -147,5 +147,14 @@ CANDIDATE_FEATURES = (
     'has_veiculo_pesado_envolvido',
     'has_registro_condicoes',
     'has_registro_via',
-    'has_registro_veiculo'
+    'has_registro_veiculo',
+    'has_registro_chuva'
 )
+
+INMET_HEADER_LINES = 10
+INMET_COLUMNS = ('Data Medicao', 'Hora Medicao', 'PRECIPITACAO TOTAL, HORARIO(mm)')
+INMET_MAX_DISTANCE_KM = 30
+INMET_NEAREST_STATIONS = 3
+
+EARTH_RADIUS_KM = 6371.0088
+LOCAL_TIMEZONE = 'America/Sao_Paulo'
